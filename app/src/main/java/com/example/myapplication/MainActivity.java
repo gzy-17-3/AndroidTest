@@ -4,16 +4,19 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.Toast;
+
+import com.alibaba.fastjson.JSON;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 
 public class MainActivity extends AppCompatActivity {
-
-    //  多线程
-    //  主运行循环  runloop
-    //
-    //      ------------>       主线程
-    //    子线程
-    //      ---->    访问网络   线程堵塞
-    //      ---->    处理大文件
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -22,40 +25,68 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
 
-
-
-//        while(true){
-//
-//            loop();
-//            1/60 s
-//            ---- 计算时间
-//        }
-
-        Runnable runnable = new Runnable() {
+        Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
                 test1();
             }
-        };
-
-        Thread thread =  new Thread(runnable);
+        });
 
         thread.start();
 
-
     }
 
-
     void test1(){
-        Thread thread = Thread.currentThread();
-        Log.e("tag", "onCreate: " + thread.getName());
-
+        String urlStr = "https://www.jianshu.com/users/recommended?seen_ids=14715425%2C5796592%2C4287007%2C3136195%2C3343569&count=5&only_unfollowed=true";
         try {
-            Thread.sleep(10000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+            URL url = new URL(urlStr);
+            HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
+            urlConnection.setRequestMethod("GET");
+            urlConnection.setConnectTimeout(6000);
+            urlConnection.setReadTimeout(6000);
+            InputStream stream = urlConnection.getInputStream();
 
-        Log.e("tag", "onCreate:  >> 2" + thread.getName());
+            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(stream));
+
+            StringBuilder result = new StringBuilder();
+            String temp;
+            temp = bufferedReader.readLine();
+
+            while (temp != null){
+                result.append(temp);
+                temp = bufferedReader.readLine();
+            }
+
+            Log.e("", "result: " + result.toString());
+
+            final Result result1 = JSON.parseObject(result.toString(), Result.class);
+
+            Log.e("", "result: " + result1.toString());
+
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    showMessage(result1);
+                }
+            });
+
+        } catch (final IOException e) {
+            e.printStackTrace();
+
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(MainActivity.this,e.toString(),Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+    }
+
+    void showMessage(Result result1){
+        if (result1.getTotal_count() > 0){
+            Toast.makeText(this, "成功：" + result1.getTotal_count(), Toast.LENGTH_SHORT).show();
+        }else{
+            Toast.makeText(this, "失败：" + result1.getTotal_count(), Toast.LENGTH_SHORT).show();
+        }
     }
 }
